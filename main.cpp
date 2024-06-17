@@ -5,7 +5,6 @@
 #include <string>
 #include <filesystem>
 #include <algorithm>
-#define elif else if
 using std::ifstream;
 using std::ofstream;
 using std::cout;
@@ -195,22 +194,22 @@ int get_config(string mode){
         if(config == "otapath"){
             ReadFile.ignore(3);
             ReadFile >> otapath;
-        } elif(config == "otacert"){
+        } else if(config == "otacert"){
             ReadFile.ignore(3);
             ReadFile >> otacert;
-        } elif(config == "avbkey"){
+        } else if(config == "avbkey"){
             ReadFile.ignore(3);
             ReadFile >> avbkey;
-        } elif(config == "otakey"){
+        } else if(config == "otakey"){
             ReadFile.ignore(3);
             ReadFile >> otakey;           
-        } elif(config == "rootmethod"){
+        } else if(config == "rootmethod"){
             ReadFile.ignore(3);
             ReadFile >> root;
-        } elif(config == "folder"){
+        } else if(config == "folder"){
             ReadFile.ignore(3);
             ReadFile >> folder;
-        } elif(config == "slot"){
+        } else if(config == "slot"){
             ReadFile.ignore(3);
             ReadFile >> slot;
         }
