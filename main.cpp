@@ -37,17 +37,48 @@ string partitions[6] = {"system", "system_ext", "system_dlkm", "vendor", "vendor
 void help(){
     cout << R"(
     -?, -h, --help                       Show this message
-    1) --generate-keys, --genkeys        Generate keys
-    2) --patch-ota                       Patch ota package
-    3) --extract                         Extract rom
+    1) --generate-config, --gencfg       Generate config.txt
+    2) --generate-keys, --genkeys        Generate keys
+    3) --patch-ota                       Patch ota package
+    4) --extract                         Extract rom
 
         --all                            Extract all partitions
         --fastboot                       Extract partitions like system, vendor, boot, vendor_boot
         --boot-only                      Extract only boot partitions
-    4) --generate-partition-list, 
+    5) --generate-partition-list, 
        --genpartlist                     Generate partition_list
-    5) --flash                           Flash rom (need partition_list))" << endl << endl;
+    6) --flash                           Flash rom (need partition_list))" << endl << endl;
 }
+
+void write(string text, string file) {
+    cmd = "echo \"" + text + "\" >> " + file;
+    exec = system(cmd.c_str());
+}
+
+void gencfg() {
+    cout << "Drag'n'drop your ota path here >> ";
+    cin >> otapath; 
+    cout << endl;
+    exec = system("rm -rf config.txt");
+    write("otapath = " + otapath, "config.txt");
+    write("otacert = ota.crt", "config.txt");
+    write("avbkey = avb.key", "config.txt");
+    write("otakey = ota.key", "config.txt");
+    cout << "Root method (nonroot/patched boot path) >> ";
+    cin >> root;
+    cout << endl;
+    write("rootmethod = " + root, "config.txt");
+    cout << "Working folder >> ";
+    cin >> folder;
+    cout << endl;
+    write("folder = " + folder, "config.txt");
+    cout << "Current/another slot >> ";
+    cin >> slot;
+    cout << endl;
+    write("slot = " + slot, "config.txt");
+    exit(0);
+}
+
 int generate_keys(){
     cmd = "./avbroot key generate-key -o " + avbkey;
     cout << cmd << endl;
@@ -75,6 +106,7 @@ int generate_keys(){
     }
     return 0;
 }
+
 int flash(){
     //execute = system("./platform-tools/fastboot erase avb_custom_key");
     //execute = system("./platform-tools/fastboot flash avb_custom_key");
@@ -102,6 +134,7 @@ int flash(){
     }
     return 0;
 }
+
 int get_imgs(){
     current_path(folder);
     string file = "partition_list";
@@ -140,6 +173,7 @@ int get_imgs(){
     outputFile.close();
     return 0;
 }
+
 int extract_rom(string mode){
     if(mode == "--boot-only" || mode == "--all" || mode == "--fastboot"){
         cmd = "./avbroot ota extract --input " + otapath + ".patched --directory " + folder + " " + mode;
@@ -149,6 +183,7 @@ int extract_rom(string mode){
     }
     return 0;
 }
+
 int get_config(string mode){
     ifstream ReadFile("config.txt");
     if(!ReadFile.is_open()) {
@@ -192,6 +227,7 @@ int get_config(string mode){
     ReadFile.close();
     return 0;
 }
+
 int patch_ota(){
     if(root == "nonroot"){
         exec = "./avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --rootless";
@@ -203,36 +239,41 @@ int patch_ota(){
     avbroot_working = system(exec.c_str());
     return 0;
 }
+
 int main(int argc, char *argv[])
 {
     std::vector<std::string> args(argv, argv+argc);
     for (size_t i = 1; i < args.size(); ++i) {
-        if(args[i] == "--help" or args[i] == "-h" or args[i] == "-?"){
+        if(args[i] == "--help" || args[i] == "-h" || args[i] == "-?"){
             help();
             return 0;
-        } elif(args[i] == "--generate-keys" or args[i] == "--genkeys"){
+        }
+        else if(args[i] == "--generate-config" || args[i] == "--gencfg") {
+            gencfg();
+            return 0;
+        } else if (args[i] == "--generate-keys" || args[i] == "--genkeys") {
             getting_config = get_config("default");
             gen_keys = generate_keys();
             return 0;
-        } elif(args[i] == "--patch-ota"){
+        } else if(args[i] == "--patch-ota"){
             getting_config = get_config("default");
             avbroot_working = patch_ota();
             return 0;
-        } elif(args[i] == "--extract") {  
+        } else if(args[i] == "--extract") {  
             getting_config = get_config("default");
             for (size_t i = 2; i < args.size(); ++i){
                 string work_type = args[i];
                 exec = extract_rom(work_type);
             }
             return 0;          
-        } elif(args[i] == "--flash"){
+        } else if(args[i] == "--flash"){
             getting_config = get_config("default");
             exec = flash();
             return 0;
-        } elif(args[i] == "--generate-partition-list" or args[i] == "--genpartlist") {
+        } else if(args[i] == "--generate-partition-list" || args[i] == "--genpartlist") {
             getting_config = get_config("default");
             exec = get_imgs();
-        } elif(args[i] == "--test"){
+        } else if(args[i] == "--test"){
             getting_config = get_config("test");
         } else{
             return 0;
