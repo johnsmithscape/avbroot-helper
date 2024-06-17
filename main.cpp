@@ -3,7 +3,6 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <filesystem>
 #include <algorithm>
 using std::ifstream;
 using std::ofstream;
@@ -13,7 +12,6 @@ using std::cin;
 using std::string;
 using std::getline;
 using std::size_t;
-using std::filesystem::current_path;
 using std::vector;
 using std::sort;
 using std::find;
@@ -58,7 +56,7 @@ void gencfg() {
     cout << "Drag'n'drop your ota path here >> ";
     cin >> otapath; 
     cout << endl;
-    exec = system("rm -rf config.txt");
+    exec = system("del config.txt");
     write("otapath = " + otapath, "config.txt");
     write("otacert = ota.crt", "config.txt");
     write("avbkey = avb.key", "config.txt");
@@ -79,25 +77,25 @@ void gencfg() {
 }
 
 int generate_keys(){
-    cmd = "./avbroot key generate-key -o " + avbkey;
+    cmd = "avbroot key generate-key -o " + avbkey;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "./avbroot key generate-key -o " + otakey;
+    cmd = "avbroot key generate-key -o " + otakey;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "./avbroot key extract-avb -k " + avbkey + " -o avb_pkmd.bin";
+    cmd = "avbroot key extract-avb -k " + avbkey + " -o avb_pkmd.bin";
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "./avbroot key generate-cert -k " + otakey + " -o " + otacert;
+    cmd = "avbroot key generate-cert -k " + otakey + " -o " + otacert;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
@@ -105,27 +103,24 @@ int generate_keys(){
     }
     return 0;
 }
-
 int flash(){
-    //execute = system("./platform-tools/fastboot erase avb_custom_key");
-    //execute = system("./platform-tools/fastboot flash avb_custom_key");
     string file = folder + "partition_list";
     ifstream ReadFile(file);
     bool ifelseif = false;
     while(ReadFile >> file) {
         if(file == "system" || file == "system_ext" || file == "system_dlkm" || file == "vendor" || file == "vendor_dlkm" || file == "product"){
             if(!ifelseif){
-                cmd = "./platform-tools/fastboot reboot fastboot";
+                cmd = "fastboot reboot fastboot";
                 exec = system(cmd.c_str());
                 //cout << cmd << endl;
                 ifelseif = true;
             }
             
-            cmd = "./platform-tools/fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
             //cout << cmd << endl;
         } else{
-            cmd = "./platform-tools/fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
             //cout << cmd << endl;
         }
@@ -133,11 +128,9 @@ int flash(){
     }
     return 0;
 }
-
 int get_imgs(){
-    current_path(folder);
-    string file = "partition_list";
-    cmd = "ls -1Sr *.img > " + file;
+    string file = folder + "partition_list";
+    cmd = "dir /B " + folder + "*.img > " + file;
     exec = system(cmd.c_str());
     ifstream inputFile(file);
     vector<string> fileNames;
@@ -172,22 +165,20 @@ int get_imgs(){
     outputFile.close();
     return 0;
 }
-
 int extract_rom(string mode){
     if(mode == "--boot-only" || mode == "--all" || mode == "--fastboot"){
-        cmd = "./avbroot ota extract --input " + otapath + ".patched --directory " + folder + " " + mode;
+        cmd = "avbroot ota extract --input " + otapath + ".patched --directory " + folder + " " + mode;
         exec = system(cmd.c_str());
     } else{
         cout << "unknown command " + mode << endl;
     }
     return 0;
 }
-
 int get_config(string mode){
     ifstream ReadFile("config.txt");
     if(!ReadFile.is_open()) {
         cout << "config.txt doesn't exist" << endl;
-        return 1;
+        exit(1);
     }
     string config;
     while(ReadFile >> config){
@@ -226,19 +217,17 @@ int get_config(string mode){
     ReadFile.close();
     return 0;
 }
-
 int patch_ota(){
     if(root == "nonroot"){
-        exec = "./avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --rootless";
+        exec = "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --rootless";
         cout << exec << endl;
     } else{
-        exec = "./avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --prepatched " + root;
+        exec = "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --prepatched " + root;
         cout << exec << endl;
     }
     avbroot_working = system(exec.c_str());
     return 0;
 }
-
 int main(int argc, char *argv[])
 {
     std::vector<std::string> args(argv, argv+argc);
