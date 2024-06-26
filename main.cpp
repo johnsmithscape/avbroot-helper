@@ -30,7 +30,7 @@ string cmd;
 string exec;
 string folder;
 string slot;
-string partitions[6] = {"system", "system_ext", "system_dlkm", "vendor", "vendor_dlkm", "product"};
+string platform_tools_location;
 void help(){
     cout << R"(
     -?, -h, --help                       Show this message
@@ -48,7 +48,7 @@ void help(){
 }
 
 void write(string text, string file) {
-    cmd = "echo \"" + text + "\" >> " + file;
+    cmd = "echo " + text + " >> " + file;
     exec = system(cmd.c_str());
 }
 
@@ -56,7 +56,7 @@ void gencfg() {
     cout << "Drag'n'drop your ota path here >> ";
     cin >> otapath; 
     cout << endl;
-    exec = system("del config.txt");
+    exec = system("del config.txt > NUL");
     write("otapath = " + otapath, "config.txt");
     write("otacert = ota.crt", "config.txt");
     write("avbkey = avb.key", "config.txt");
@@ -73,6 +73,10 @@ void gencfg() {
     cin >> slot;
     cout << endl;
     write("slot = " + slot, "config.txt");
+    cout << "Platform-tools location (If you have platform-tools in path just write \"path\") >> ";
+    cin >> platform_tools_location;
+    cout << endl;
+    write("platform_tools_location = " + platform_tools_location, "config.txt");
     exit(0);
 }
 
@@ -110,19 +114,16 @@ int flash(){
     while(ReadFile >> file) {
         if(file == "system" || file == "system_ext" || file == "system_dlkm" || file == "vendor" || file == "vendor_dlkm" || file == "product"){
             if(!ifelseif){
-                cmd = "fastboot reboot fastboot";
+                cmd = platform_tools_location + "fastboot reboot fastboot";
                 exec = system(cmd.c_str());
-                //cout << cmd << endl;
                 ifelseif = true;
             }
             
-            cmd = "fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = platform_tools_location + "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
-            //cout << cmd << endl;
         } else{
-            cmd = "fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = platform_tools_location + "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
-            //cout << cmd << endl;
         }
         
     }
@@ -203,6 +204,9 @@ int get_config(string mode){
         } else if(config == "slot"){
             ReadFile.ignore(3);
             ReadFile >> slot;
+        } else if(config == "platform_tools_location"){
+            ReadFile.ignore(3);
+            ReadFile >> platform_tools_location;
         }
     }
     if(mode == "test"){
@@ -213,6 +217,9 @@ int get_config(string mode){
         cout << root << endl;
         cout << folder << endl;
         cout << slot << endl;
+    }
+    if(platform_tools_location == "path"){
+        platform_tools_location = "";
     }
     ReadFile.close();
     return 0;
