@@ -32,7 +32,7 @@ string cmd;
 string exec;
 string folder;
 string slot;
-string partitions[6] = {"system", "system_ext", "system_dlkm", "vendor", "vendor_dlkm", "product"};
+string platform_tools_location;
 void help(){
     cout << R"(
     -?, -h, --help                       Show this message
@@ -75,6 +75,10 @@ void gencfg() {
     cin >> slot;
     cout << endl;
     write("slot = " + slot, "config.txt");
+    cout << "Platform-tools location (If you have platform-tools in path just write \"path\") >> ";
+    cin >> platform_tools_location;
+    cout << endl;
+    write("platform_tools_location = " + platform_tools_location, "config.txt");
     exit(0);
 }
 
@@ -107,27 +111,22 @@ int generate_keys(){
 }
 
 int flash(){
-    //execute = system("./platform-tools/fastboot erase avb_custom_key");
-    //execute = system("./platform-tools/fastboot flash avb_custom_key");
     string file = folder + "partition_list";
     ifstream ReadFile(file);
     bool ifelseif = false;
     while(ReadFile >> file) {
         if(file == "system" || file == "system_ext" || file == "system_dlkm" || file == "vendor" || file == "vendor_dlkm" || file == "product"){
             if(!ifelseif){
-                cmd = "./platform-tools/fastboot reboot fastboot";
+                cmd = platform_tools_location + "fastboot reboot fastboot";
                 exec = system(cmd.c_str());
-                //cout << cmd << endl;
                 ifelseif = true;
             }
             
-            cmd = "./platform-tools/fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = platform_tools_location + "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
-            //cout << cmd << endl;
         } else{
-            cmd = "./platform-tools/fastboot flash " + file + slot + " " + folder + file + ".img";
+            cmd = platform_tools_location + "fastboot flash " + file + slot + " " + folder + file + ".img";
             exec = system(cmd.c_str());
-            //cout << cmd << endl;
         }
         
     }
@@ -212,6 +211,9 @@ int get_config(string mode){
         } else if(config == "slot"){
             ReadFile.ignore(3);
             ReadFile >> slot;
+        } else if(config == "platform_tools_location"){
+            ReadFile.ignore(3);
+            ReadFile >> platform_tools_location;
         }
     }
     if(mode == "test"){
