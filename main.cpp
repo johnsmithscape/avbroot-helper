@@ -157,7 +157,7 @@ int flash_adb(){
         cout << "Now reboot your phone to recovery mode and enable sideload mode" << endl;
         cout << "When adb finds your phone press q and enter" << endl << endl;
         exec = system(cmd.c_str());
-        cout << "↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑" << endl;
+        cout << "^^^^^^^^^^^^^^^^^^^^^^^^" << endl;
         cout << "Your device should be appeared here" << endl;
         sleep(2000); // in milliseconds
         exec = system("cls");
