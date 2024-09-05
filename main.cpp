@@ -114,7 +114,7 @@ int generate_keys(){
 }
 
 void sleep(int time){
-    std::this_thread::sleep_for(std::chrono::milliseconds(time));
+    std::this_thread::sleep_for(std::chrono::seconds(time));
 }
 
 static void* userInput_thread(void*){
@@ -159,7 +159,7 @@ int flash_adb(){
         exec = system(cmd.c_str());
         cout << "^^^^^^^^^^^^^^^^^^^^^^^^" << endl;
         cout << "Your device should be appeared here" << endl;
-        sleep(2000); // in milliseconds
+        sleep(2); // in seconds
         exec = system("cls");
     }
     (void) pthread_join(tId, NULL);
