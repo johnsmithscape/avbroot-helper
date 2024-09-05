@@ -4,6 +4,9 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <thread>
+#include <pthread.h>
+#include <chrono>
 using std::ifstream;
 using std::ofstream;
 using std::cout;
@@ -31,6 +34,7 @@ string exec;
 string folder;
 string slot;
 string platform_tools_location;
+static volatile bool keep_running = true;
 void help(){
     cout << R"(
     -?, -h, --help                       Show this message
@@ -44,7 +48,8 @@ void help(){
         --boot-only                      Extract only boot partitions
     5) --generate-partition-list, 
        --genpartlist                     Generate partition_list
-    6) --flash                           Flash rom (need partition_list))" << endl << endl;
+    6) --flash-fastboot                  Flash rom via fastboot (need partition_list)
+       --flash-adb                       Flash rom via adb)" << endl << endl;
 }
 
 void write(string text, string file) {
@@ -107,16 +112,29 @@ int generate_keys(){
     }
     return 0;
 }
-int flash(){
+
+void sleep(int time){
+    std::this_thread::sleep_for(std::chrono::milliseconds(time));
+}
+
+static void* userInput_thread(void*){
+    while(keep_running) {
+        if(cin.get() == 'q'){
+            keep_running = false;
+        }
+    }
+    return 0;
+}
+
+int flash_fastboot(){
     string file = folder + "partition_list";
     ifstream ReadFile(file);
-    bool ifelseif = false;
     while(ReadFile >> file) {
         if(file == "system" || file == "system_ext" || file == "system_dlkm" || file == "vendor" || file == "vendor_dlkm" || file == "product"){
-            if(!ifelseif){
+            if(keep_running){
                 cmd = platform_tools_location + "fastboot reboot fastboot";
                 exec = system(cmd.c_str());
-                ifelseif = true;
+                keep_running = false;
             }
             
             cmd = platform_tools_location + "fastboot flash " + file + slot + " " + folder + file + ".img";
@@ -129,6 +147,27 @@ int flash(){
     }
     return 0;
 }
+
+int flash_adb(){
+    pthread_t tId;
+    cmd = "adb devices";
+    (void) pthread_create(&tId, 0, userInput_thread, 0);
+    
+    while(keep_running){
+        cout << "Now reboot your phone to recovery mode and enable sideload mode" << endl;
+        cout << "When adb finds your phone press q and enter" << endl << endl;
+        exec = system(cmd.c_str());
+        cout << "↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑" << endl;
+        cout << "Your device should be appeared here" << endl;
+        sleep(2000); // in milliseconds
+        exec = system("clear");
+    }
+    (void) pthread_join(tId, NULL);
+    cmd = "adb sideload " + otapath + ".patched";
+    exec = system(cmd.c_str());
+    return 0;
+}
+
 int get_imgs(){
     string file = folder + "partition_list";
     cmd = "dir /B " + folder + "*.img > " + file;
@@ -261,9 +300,13 @@ int main(int argc, char *argv[])
                 exec = extract_rom(work_type);
             }
             return 0;          
-        } else if(args[i] == "--flash"){
+        } else if(args[i] == "--flash-fastboot"){
             getting_config = get_config("default");
-            exec = flash();
+            exec = flash_fastboot();
+            return 0;
+        } else if(args[i] == "--flash-adb"){
+            getting_config = get_config("default");
+            exec = flash_adb();
             return 0;
         } else if(args[i] == "--generate-partition-list" || args[i] == "--genpartlist") {
             getting_config = get_config("default");
