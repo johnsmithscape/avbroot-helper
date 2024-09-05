@@ -160,7 +160,7 @@ int flash_adb(){
         cout << "↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑" << endl;
         cout << "Your device should be appeared here" << endl;
         sleep(2000); // in milliseconds
-        exec = system("clear");
+        exec = system("cls");
     }
     (void) pthread_join(tId, NULL);
     cmd = "adb sideload " + otapath + ".patched";
