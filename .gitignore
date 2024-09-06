@@ -1,0 +1,16 @@
+ota.key
+ota.crt
+avb.key
+avb_pkmd.bin
+avbroot
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/*
+extracted/*
+*.img
+*.zip
+*.zip.patched
+*.swp
+config.txt
+main
+Makefile
