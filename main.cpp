@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <filesystem>
 #include <algorithm>
 #include <thread>
 #include <pthread.h>
@@ -15,6 +16,7 @@ using std::cin;
 using std::string;
 using std::getline;
 using std::size_t;
+using std::filesystem::current_path;
 using std::vector;
 using std::sort;
 using std::find;
@@ -34,6 +36,7 @@ string exec;
 string folder;
 string slot;
 string platform_tools_location;
+string avbroot_location;
 static volatile bool keep_running = true;
 void help(){
     cout << R"(
@@ -53,7 +56,11 @@ void help(){
 }
 
 void write(string text, string file) {
-    cmd = "echo " + text + " >> " + file;
+    #if _WIN32
+      cmd = "echo " + text + " >> " + file;
+    #else
+      cmd = "echo \"" + text + "\" >> " + file;
+    #endif
     exec = system(cmd.c_str());
 }
 
@@ -61,7 +68,11 @@ void gencfg() {
     cout << "Drag'n'drop your ota path here >> ";
     cin >> otapath; 
     cout << endl;
-    exec = system("del config.txt > NUL");
+    #if _WIN32
+      exec = system("del config.txt > NUL");
+    #else
+      exec = system("rm -rf config.txt");
+    #endif
     write("otapath = " + otapath, "config.txt");
     write("otacert = ota.crt", "config.txt");
     write("avbkey = avb.key", "config.txt");
@@ -78,33 +89,45 @@ void gencfg() {
     cin >> slot;
     cout << endl;
     write("slot = " + slot, "config.txt");
-    cout << "Platform-tools location (If you have platform-tools in path just write \"path\") >> ";
+    #if __WIN32
+      cout << "Platform-tools location (If you have platform-tools in program folder just write \"path\") >> ";
+    #else 
+      cout << "Platform-tools location (If you have platform-tools in path just write \"path\") >> ";
+    #endif
     cin >> platform_tools_location;
     cout << endl;
     write("platform_tools_location = " + platform_tools_location, "config.txt");
+    #if __WIN32
+      cout << "Avbroot location (If you have avbroot in program folder just write \"path\") >> ";
+    #else
+      cout << "Avbroot location (If you have avbroot in path just write \"path\") >> ";
+    #endif
+    cin >> avbroot_location;
+    cout << endl;
+    write("avbroot_location = " + avbroot_location, "config.txt");
     exit(0);
 }
 
 int generate_keys(){
-    cmd = "avbroot key generate-key -o " + avbkey;
+    cmd = avbroot_location + "avbroot key generate-key -o " + avbkey;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "avbroot key generate-key -o " + otakey;
+    cmd = avbroot_location + "avbroot key generate-key -o " + otakey;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "avbroot key extract-avb -k " + avbkey + " -o avb_pkmd.bin";
+    cmd = avbroot_location + "avbroot key extract-avb -k " + avbkey + " -o avb_pkmd.bin";
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
         return 1;
     }
-    cmd = "avbroot key generate-cert -k " + otakey + " -o " + otacert;
+    cmd = avbroot_location + "avbroot key generate-cert -k " + otakey + " -o " + otacert;
     cout << cmd << endl;
     execute = system(cmd.c_str());
     if(execute != 0){
@@ -127,7 +150,11 @@ static void* userInput_thread(void*){
 }
 
 int flash_fastboot(){
-    string file = folder + "partition_list";
+    #if _WIN32
+      string file = folder + "partition_list.txt";
+    #else
+      string file = folder + "partition_list";
+    #endif
     ifstream ReadFile(file);
     while(ReadFile >> file) {
         if(file == "system" || file == "system_ext" || file == "system_dlkm" || file == "vendor" || file == "vendor_dlkm" || file == "product"){
@@ -160,17 +187,27 @@ int flash_adb(){
         cout << "^^^^^^^^^^^^^^^^^^^^^^^^" << endl;
         cout << "Your device should be appeared here" << endl;
         sleep(2); // in seconds
-        exec = system("cls");
+        #if _WIN32
+          exec = system("cls");
+        #else
+          exec = system("clear");
+        #endif
     }
     (void) pthread_join(tId, NULL);
-    cmd = "adb sideload " + otapath + ".patched";
+    cmd = platform_tools_location + "adb sideload " + otapath + ".patched";
     exec = system(cmd.c_str());
     return 0;
 }
 
 int get_imgs(){
-    string file = folder + "partition_list";
-    cmd = "dir /B " + folder + "*.img > " + file;
+    current_path(folder);
+    #if _WIN32
+      string file = "partition_list.txt";
+      cmd = "dir /B *.img > " + file;
+    #else
+      string file = "partition_list"; 
+      cmd = "ls -1Sr *.img > " + file;
+    #endif
     exec = system(cmd.c_str());
     ifstream inputFile(file);
     vector<string> fileNames;
@@ -207,7 +244,7 @@ int get_imgs(){
 }
 int extract_rom(string mode){
     if(mode == "--boot-only" || mode == "--all" || mode == "--fastboot"){
-        cmd = "avbroot ota extract --input " + otapath + ".patched --directory " + folder + " " + mode;
+        cmd = avbroot_location + "avbroot ota extract --input " + otapath + ".patched --directory " + folder + " " + mode;
         exec = system(cmd.c_str());
     } else{
         cout << "unknown command " + mode << endl;
@@ -246,6 +283,9 @@ int get_config(string mode){
         } else if(config == "platform_tools_location"){
             ReadFile.ignore(3);
             ReadFile >> platform_tools_location;
+        } else if(config == "avbroot_location"){
+            ReadFile.ignore(3);
+            ReadFile >> avbroot_location;
         }
     }
     if(mode == "test"){
@@ -256,19 +296,24 @@ int get_config(string mode){
         cout << root << endl;
         cout << folder << endl;
         cout << slot << endl;
+        cout << platform_tools_location << endl;
+        cout << avbroot_location << endl;
     }
     if(platform_tools_location == "path"){
         platform_tools_location = "";
+    }
+    if(avbroot_location == "path"){
+        avbroot_location = "";
     }
     ReadFile.close();
     return 0;
 }
 int patch_ota(){
     if(root == "nonroot"){
-        exec = "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --rootless";
+        exec = avbroot_location + "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --rootless";
         cout << exec << endl;
     } else{
-        exec = "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --prepatched " + root;
+        exec = avbroot_location + "avbroot ota patch --input " + otapath + " --key-avb " + avbkey + " --key-ota " + otakey + " --cert-ota " + otacert + " --prepatched " + root;
         cout << exec << endl;
     }
     avbroot_working = system(exec.c_str());
